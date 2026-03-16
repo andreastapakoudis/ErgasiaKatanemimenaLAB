@@ -130,6 +130,9 @@ class AggregationStoreAsync:
                         "sum": s_sum,
                         "min": s_min,
                         "max": s_max,
+                        "sensor_type": measurement.meta.sensor_type,
+                        "location": measurement.meta.location,
+                        "updated_unix_ms": measurement.ts_unix_ms,
                     })
 
                     # Update recent list (keep last 20)
@@ -161,28 +164,23 @@ store = AggregationStoreAsync()
 class IngestService(telemetry_pb2_grpc.IngestServiceServicer):
 
     async def PushMeasurements(self, request_iterator, context):
-        """
-        Placeholder implementation.
+    received = 0
 
-        Future tasks:
-        - Iterate over request_iterator.
-        - Update Redis aggregation.
-        - Maintain per-sensor recent values.
-        """
+    async for measurement in request_iterator:
+        await store.update(measurement)
+        received += 1
 
-        print("[Collector] IngestService placeholder active")
+        print(
+            f"[Ingest] "
+            f"{measurement.meta.sensor_id} "
+            f"{measurement.meta.sensor_type}@{measurement.meta.location} "
+            f"value={measurement.value:.2f}"
+        )
 
-        received = 0
+    return telemetry_pb2.IngestAck(received=received)
+        
 
-        async for measurement in request_iterator:
-            received += 1
-            print(
-                f"[Ingest placeholder] "
-                f"{measurement.meta.sensor_id} "
-                f"value={measurement.value:.2f}"
-            )
-
-        return telemetry_pb2.IngestAck(received=received)
+        
 
 
 # ----------------------------------------------------------
@@ -191,30 +189,54 @@ class IngestService(telemetry_pb2_grpc.IngestServiceServicer):
 class AggregateService(telemetry_pb2_grpc.AggregateServiceServicer):
 
     async def StreamAggregates(self, request, context):
-        """
-        Placeholder implementation.
+    print("[Collector] AggregateService stream started")
 
-        Future tasks:
-        - Read aggregates from Redis.
-        - Stream updated values periodically.
-        """
+    requested_keys = None
+    if request.keys:
+        requested_keys = {
+            f"agg:{key.sensor_type}:{key.location}"
+            for key in request.keys
+        }
 
-        print("[Collector] AggregateService placeholder active")
+    previous_snapshot = {}
 
-        while True:
+    while True:
+        snapshot = await store.snapshot()
+
+        for redis_key, data in snapshot.items():
+            if requested_keys is not None and redis_key not in requested_keys:
+                continue
+
+            normalized = {
+                "count": int(data.get("count", 0)),
+                "sum": float(data.get("sum", 0.0)),
+                "min": float(data.get("min", 0.0)),
+                "max": float(data.get("max", 0.0)),
+            }
+
+            if previous_snapshot.get(redis_key) == normalized:
+                continue
+
+            previous_snapshot[redis_key] = normalized
+
+            try:
+                _, sensor_type, location = redis_key.split(":", 2)
+            except ValueError:
+                continue
+
             yield telemetry_pb2.Aggregate(
                 key=telemetry_pb2.AggregateKey(
-                    sensor_type="placeholder",
-                    location="placeholder",
+                    sensor_type=sensor_type,
+                    location=location,
                 ),
-                count=0,
-                sum=0.0,
-                min=0.0,
-                max=0.0,
+                count=normalized["count"],
+                sum=normalized["sum"],
+                min=normalized["min"],
+                max=normalized["max"],
                 updated_unix_ms=int(time.time() * 1000),
             )
 
-            await asyncio.sleep(5)
+        await asyncio.sleep(1)
                     
 # ----------------------------------------------------------
 # 3️⃣ Unary query service
@@ -222,29 +244,45 @@ class AggregateService(telemetry_pb2_grpc.AggregateServiceServicer):
 class QueryService(telemetry_pb2_grpc.QueryServiceServicer):
 
     async def GetSensorStats(self, request, context):
-        """
-        Placeholder implementation.
+    sensor_id = request.sensor_id
 
-        Future tasks:
-        - Retrieve per-sensor stats from Redis.
-        - Return recent values.
-        """
+    sensor_stats_key = f"sensor:{sensor_id}:stats"
+    sensor_recent_key = f"sensor:{sensor_id}:recent"
 
-        print(f"[Query placeholder] sensor={request.sensor_id}")
+    stats = await redis_client.hgetall(sensor_stats_key)
 
-        return telemetry_pb2.GetSensorStatsResponse(
-            meta=telemetry_pb2.SensorMeta(
-                sensor_id=request.sensor_id,
-                sensor_type="placeholder",
-                location="placeholder",
-            ),
-            count=0,
-            sum=0.0,
-            min=0.0,
-            max=0.0,
-            updated_unix_ms=int(time.time() * 1000),
-            recent=[],
+    if not stats:
+        await context.abort(grpc.StatusCode.NOT_FOUND, "Sensor not found")
+
+    recent_raw = await redis_client.lrange(sensor_recent_key, 0, 19)
+
+    recent_values = []
+    for item in recent_raw:
+        parsed = json.loads(item)
+        recent_values.append(
+            telemetry_pb2.RecentValue(
+                ts_unix_ms=int(parsed["ts"]),
+                value=float(parsed["value"]),
+            )
         )
+
+    return telemetry_pb2.GetSensorStatsResponse(
+        meta=telemetry_pb2.SensorMeta(
+            sensor_id=sensor_id,
+            sensor_type=stats.get("sensor_type", ""),
+            location=stats.get("location", ""),
+        ),
+        count=int(stats.get("count", 0)),
+        sum=float(stats.get("sum", 0.0)),
+        min=float(stats.get("min", 0.0)),
+        max=float(stats.get("max", 0.0)),
+        updated_unix_ms=int(stats.get("updated_unix_ms", 0)),
+        recent=recent_values,
+    )
+        
+
+        
+        
     
             
 
