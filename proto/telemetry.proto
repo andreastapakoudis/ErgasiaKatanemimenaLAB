@@ -6,22 +6,32 @@ package telemetry.v1;
 // ------------------------------------
 
 message SensorMeta {
-    //TODO: define message fields
+    string sensor_id = 1;
+    string sensor_type = 2;
+    string location = 3;
 }
 
 message Measurement {
-    //TODO: define message fields
+    SensorMeta meta = 1;
+    double value = 2;
+    uint64 ts_unix_ms = 3;
 }
 
 // ------------------------------------
 // Aggregations (simple: min/max/count/sum)
 // ------------------------------------
 message AggregateKey {
-    //TODO: define message fields
+    string sensor_type = 1;
+    string location = 2;
 }
 
 message Aggregate {
-    //TODO: define message fields
+    AggregateKey key = 1;
+    uint64 count = 2;
+    double sum = 3;
+    double min = 4;
+    double max = 5;
+    uint64 updated_unix_ms = 6;
 }
 
 // ------------------------------------
@@ -56,13 +66,20 @@ service QueryService {
     rpc GetSensorStats(GetSensorStatsRequest) returns (GetSensorStatsResponse);
 }
 message GetSensorStatsRequest {
-    //TODO: define message fields
+    string sensor_id = 1;
 }
 
 message RecentValue {
-  //TODO: define message fields
+    uint64 ts_unix_ms = 1;
+    double value = 2;
 }
 
 message GetSensorStatsResponse {
-    //TODO: define message fields
+    SensorMeta meta = 1;
+    uint64 count = 2;
+    double sum = 3;
+    double min = 4;
+    double max = 5;
+    uint64 updated_unix_ms = 6;
+    repeated RecentValue recent = 7;
 }
