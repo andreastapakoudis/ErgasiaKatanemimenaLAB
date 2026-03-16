@@ -164,20 +164,20 @@ store = AggregationStoreAsync()
 class IngestService(telemetry_pb2_grpc.IngestServiceServicer):
 
     async def PushMeasurements(self, request_iterator, context):
-    received = 0
+        received = 0
 
-    async for measurement in request_iterator:
-        await store.update(measurement)
-        received += 1
+        async for measurement in request_iterator:
+            await store.update(measurement)
+            received += 1
 
-        print(
-            f"[Ingest] "
-            f"{measurement.meta.sensor_id} "
-            f"{measurement.meta.sensor_type}@{measurement.meta.location} "
-            f"value={measurement.value:.2f}"
-        )
+            print(
+                f"[Ingest] "
+                f"{measurement.meta.sensor_id} "
+                f"{measurement.meta.sensor_type}@{measurement.meta.location} "
+                f"value={measurement.value:.2f}"
+            )
 
-    return telemetry_pb2.IngestAck(received=received)
+        return telemetry_pb2.IngestAck(received=received)
         
 
         
@@ -189,54 +189,54 @@ class IngestService(telemetry_pb2_grpc.IngestServiceServicer):
 class AggregateService(telemetry_pb2_grpc.AggregateServiceServicer):
 
     async def StreamAggregates(self, request, context):
-    print("[Collector] AggregateService stream started")
+        print("[Collector] AggregateService stream started")
 
-    requested_keys = None
-    if request.keys:
-        requested_keys = {
-            f"agg:{key.sensor_type}:{key.location}"
-            for key in request.keys
-        }
-
-    previous_snapshot = {}
-
-    while True:
-        snapshot = await store.snapshot()
-
-        for redis_key, data in snapshot.items():
-            if requested_keys is not None and redis_key not in requested_keys:
-                continue
-
-            normalized = {
-                "count": int(data.get("count", 0)),
-                "sum": float(data.get("sum", 0.0)),
-                "min": float(data.get("min", 0.0)),
-                "max": float(data.get("max", 0.0)),
+        requested_keys = None
+        if request.keys:
+            requested_keys = {
+                f"agg:{key.sensor_type}:{key.location}"
+                for key in request.keys
             }
 
-            if previous_snapshot.get(redis_key) == normalized:
-                continue
+        previous_snapshot = {}
 
-            previous_snapshot[redis_key] = normalized
+        while True:
+            snapshot = await store.snapshot()
 
-            try:
-                _, sensor_type, location = redis_key.split(":", 2)
-            except ValueError:
-                continue
+            for redis_key, data in snapshot.items():
+                if requested_keys is not None and redis_key not in requested_keys:
+                    continue
 
-            yield telemetry_pb2.Aggregate(
-                key=telemetry_pb2.AggregateKey(
-                    sensor_type=sensor_type,
-                    location=location,
-                ),
-                count=normalized["count"],
-                sum=normalized["sum"],
-                min=normalized["min"],
-                max=normalized["max"],
-                updated_unix_ms=int(time.time() * 1000),
-            )
+                normalized = {
+                    "count": int(data.get("count", 0)),
+                    "sum": float(data.get("sum", 0.0)),
+                    "min": float(data.get("min", 0.0)),
+                    "max": float(data.get("max", 0.0)),
+                }
 
-        await asyncio.sleep(1)
+                if previous_snapshot.get(redis_key) == normalized:
+                    continue
+
+                previous_snapshot[redis_key] = normalized
+
+                try:
+                    _, sensor_type, location = redis_key.split(":", 2)
+                except ValueError:
+                    continue
+
+                yield telemetry_pb2.Aggregate(
+                    key=telemetry_pb2.AggregateKey(
+                        sensor_type=sensor_type,
+                        location=location,
+                    ),
+                    count=normalized["count"],
+                    sum=normalized["sum"],
+                    min=normalized["min"],
+                    max=normalized["max"],
+                    updated_unix_ms=int(time.time() * 1000),
+                )
+
+            await asyncio.sleep(1)
                     
 # ----------------------------------------------------------
 # 3️⃣ Unary query service
@@ -244,41 +244,41 @@ class AggregateService(telemetry_pb2_grpc.AggregateServiceServicer):
 class QueryService(telemetry_pb2_grpc.QueryServiceServicer):
 
     async def GetSensorStats(self, request, context):
-    sensor_id = request.sensor_id
+        sensor_id = request.sensor_id
 
-    sensor_stats_key = f"sensor:{sensor_id}:stats"
-    sensor_recent_key = f"sensor:{sensor_id}:recent"
+        sensor_stats_key = f"sensor:{sensor_id}:stats"
+        sensor_recent_key = f"sensor:{sensor_id}:recent"
 
-    stats = await redis_client.hgetall(sensor_stats_key)
+        stats = await redis_client.hgetall(sensor_stats_key)
 
-    if not stats:
-        await context.abort(grpc.StatusCode.NOT_FOUND, "Sensor not found")
+        if not stats:
+            await context.abort(grpc.StatusCode.NOT_FOUND, "Sensor not found")
 
-    recent_raw = await redis_client.lrange(sensor_recent_key, 0, 19)
+        recent_raw = await redis_client.lrange(sensor_recent_key, 0, 19)
 
-    recent_values = []
-    for item in recent_raw:
-        parsed = json.loads(item)
-        recent_values.append(
-            telemetry_pb2.RecentValue(
-                ts_unix_ms=int(parsed["ts"]),
-                value=float(parsed["value"]),
+        recent_values = []
+        for item in recent_raw:
+            parsed = json.loads(item)
+            recent_values.append(
+                telemetry_pb2.RecentValue(
+                    ts_unix_ms=int(parsed["ts"]),
+                    value=float(parsed["value"]),
+                )
             )
-        )
 
-    return telemetry_pb2.GetSensorStatsResponse(
-        meta=telemetry_pb2.SensorMeta(
-            sensor_id=sensor_id,
-            sensor_type=stats.get("sensor_type", ""),
-            location=stats.get("location", ""),
-        ),
-        count=int(stats.get("count", 0)),
-        sum=float(stats.get("sum", 0.0)),
-        min=float(stats.get("min", 0.0)),
-        max=float(stats.get("max", 0.0)),
-        updated_unix_ms=int(stats.get("updated_unix_ms", 0)),
-        recent=recent_values,
-    )
+        return telemetry_pb2.GetSensorStatsResponse(
+            meta=telemetry_pb2.SensorMeta(
+                sensor_id=sensor_id,
+                sensor_type=stats.get("sensor_type", ""),
+                location=stats.get("location", ""),
+            ),
+            count=int(stats.get("count", 0)),
+            sum=float(stats.get("sum", 0.0)),
+            min=float(stats.get("min", 0.0)),
+            max=float(stats.get("max", 0.0)),
+            updated_unix_ms=int(stats.get("updated_unix_ms", 0)),
+            recent=recent_values,
+        )
         
 
         
@@ -306,7 +306,7 @@ async def stats_printer():
             avg = sum_v / count if count else 0
             print(
                 f"{key} count = {count} avg={avg:.2f} "
-                f"min={float(v["min"]):.2f} max={float(v["max"]):.2f}"
+                f"min={float(v['min']):.2f} max={float(v['max']):.2f}"
             )
         print("============================\n")
 

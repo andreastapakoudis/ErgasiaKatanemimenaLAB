@@ -64,35 +64,30 @@ async def send_sensor(sensor: MockSensor):
         addr = random.choice(COLLECTOR_ADDRS)
         try:
             async with grpc.aio.insecure_channel(addr) as channel:
-                # ------------------------------------------------------------------
-                # TEMPORARY PLACEHOLDER (NO gRPC YET)
-                #
-                # This block simply consumes the sensor stream locally so that the
-                # program runs without contacting a collector service.
-                #
-                # You should replace this with a real gRPC call
-                # 
-                # 1. Use the gRPC channel created above
-                # 2. Create the IngestServiceStub
-                # 3. Stream Measurement messages using:
-                #   await stub.PushMeasuremets(request_generator())
-                # ------------------------------------------------------------------
+                stub = telemetry_pb2_grpc.IngestServiceStub(channel)
+                backoff = 1
 
-                print(f"[{sensor.sensor_id}] placeholder connection -> {addr}")
+                async def request_generator():
+                    async for reading in sensor.stream():
+                        yield telemetry_pb2.Measurement(
+                            meta=telemetry_pb2.SensorMeta(
+                                sensor_id=reading.sensor_id,
+                                sensor_type=reading.sensor_type,
+                                location=reading.location,
+                            ),
+                            seq=reading.seq,
+                            ts_unix_ms=reading.ts_unix_ms,
+                            value=reading.value,
+                        )
 
-                async for reading in sensor.stream():
-                    print(
-                        f"[{reading.sensor_id}] "
-                        f"{reading.sensor_type}@{reading.location} "
-                        f"value={reading.value:.2f} "
-                        f"ts={reading.ts_unix_ms}"
-                    )
-
-                    # Simulate network delay / batching
-                    await asyncio.sleep(0.1)
+                print(f"[{sensor.sensor_id}] streaming to {addr}")
+                await stub.PushMeasurements(request_generator())
+                backoff = 1
 
         except grpc.aio.AioRpcError as e:
             print(f"[{sensor.sensor_id}] disconnected from {addr}:", e.code())
+        except asyncio.CancelledError:
+            raise
         
         # Exponential backoff with jitter
         sleep_time = backoff + random.uniform(0, 0.5)

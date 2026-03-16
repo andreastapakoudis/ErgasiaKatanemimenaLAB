@@ -75,7 +75,7 @@ For now, focus on streaming.
 """
 import asyncio
 import grpc
-import time
+import json
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -120,79 +120,72 @@ async def broadcast(message: str):
 # gRPC streaming subscriber
 # -----------------------------
 async def subscribe_to_collector():
-    """
-    TEMPORARY PLACEHOLDER.
-
-    Students must replace this with:
-
-        grpc.aio channel
-        AggregateServiceStub
-        StreamAggregates RPC call
-
-        Steps:
-        1) create gRPC async channel:
-            grpc.aio.insecure_channel(...)
-        2) create stub
-            AggregateServiceStub(channel)
-        3) stream rpc call:
-            stub.StreamAggregates(...)
-        4) For each received aggregate message broadcast to connected websocket clients:
-            await broadcast(...)
-            Keep in mind: each Aggregate message received contains:
-                aggregate key (location-sensor type)
-                count (number of measurements)
-                sum (sum of all measurements of sensor-type in location)
-            the broadcast message should contain:
-                the aggregate - key
-                average value (computed here)
-                count, min, max (from Aggregate msg)
-
-
-        
-    For now:
-    - Generates fake aggregate messages
-    - Broadcasts them every few seconds
-    """
-
-    print("[FastAPI] Placeholder aggregate stream started")
-
+    backoff = 1
     while True:
-        fake_message = f"placeholder aggregate update {int(time.time())}"
+        try:
+            async with grpc.aio.insecure_channel(COLLECTOR_ADDR) as channel:
+                stub = telemetry_pb2_grpc.AggregateServiceStub(channel)
+                request = telemetry_pb2.StreamAggregatesRequest(
+                    send_initial_snapshot=True
+                )
 
-        print("[FastAPI] broadcasting:", fake_message)
+                print(f"[FastAPI] subscribed to collector at {COLLECTOR_ADDR}")
+                backoff = 1
 
-        await broadcast(fake_message)
+                async for aggregate in stub.StreamAggregates(request):
+                    avg = aggregate.sum / aggregate.count if aggregate.count else 0.0
+                    message = json.dumps(
+                        {
+                            "sensor_type": aggregate.key.sensor_type,
+                            "location": aggregate.key.location,
+                            "count": aggregate.count,
+                            "avg": avg,
+                            "min": aggregate.min,
+                            "max": aggregate.max,
+                            "updated_unix_ms": aggregate.updated_unix_ms,
+                        }
+                    )
+                    await broadcast(message)
+        except grpc.aio.AioRpcError as e:
+            print(f"[FastAPI] collector stream error: {e.code()}")
+        except asyncio.CancelledError:
+            raise
 
-        await asyncio.sleep(5)
+        sleep_time = backoff
+        print(f"[FastAPI] retrying collector stream in {sleep_time:.1f}s")
+        await asyncio.sleep(sleep_time)
+        backoff = min(backoff * 2, 30)
 
 
 async def query_sensor_stats(sensor_id: str):
-    async with grpc.aio.insecure_channel(COLLECTOR_ADDR) as channel:
-        stub = telemetry_pb2_grpc.QueryServiceStub(channel)
+    try:
+        async with grpc.aio.insecure_channel(COLLECTOR_ADDR) as channel:
+            stub = telemetry_pb2_grpc.QueryServiceStub(channel)
 
-        resp = await stub.GetSensorStats(
-            telemetry_pb2.GetSensorStatsRequest(sensor_id=sensor_id)
-        )
+            resp = await stub.GetSensorStats(
+                telemetry_pb2.GetSensorStatsRequest(sensor_id=sensor_id)
+            )
 
-        if resp.count == 0:
+            avg = resp.sum / resp.count if resp.count else 0
+
+            return {
+                "sensor_id": resp.meta.sensor_id,
+                "count": resp.count,
+                "avg": avg,
+                "min": resp.min,
+                "max": resp.max,
+                "recent": [
+                    {
+                        "ts_unix_ms": r.ts_unix_ms,
+                        "value": r.value,
+                    }
+                    for r in resp.recent
+                ],
+            }
+    except grpc.aio.AioRpcError as e:
+        if e.code() == grpc.StatusCode.NOT_FOUND:
             return None
-        
-        avg = resp.sum / resp.count if resp.count else 0
-
-        return {
-            "sensor_id": resp.meta.sensor_id,
-            "count": resp.count,
-            "avg": avg,
-            "min": resp.min,
-            "max": resp.max,
-            "recent": [
-                {
-                    "ts_unix_ms": r.ts_unix_ms,
-                    "value": r.value,
-                }
-                for r in resp.recent
-            ],
-        }
+        raise
 
 
 

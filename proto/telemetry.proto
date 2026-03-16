@@ -13,8 +13,9 @@ message SensorMeta {
 
 message Measurement {
     SensorMeta meta = 1;
-    double value = 2;
-    uint64 ts_unix_ms = 3;
+    uint64 seq = 2;
+    int64 ts_unix_ms = 3;
+    double value = 4;
 }
 
 // ------------------------------------
@@ -31,7 +32,7 @@ message Aggregate {
     double sum = 3;
     double min = 4;
     double max = 5;
-    uint64 updated_unix_ms = 6;
+    int64 updated_unix_ms = 6;
 }
 
 // ------------------------------------
@@ -70,7 +71,7 @@ message GetSensorStatsRequest {
 }
 
 message RecentValue {
-    uint64 ts_unix_ms = 1;
+    int64 ts_unix_ms = 1;
     double value = 2;
 }
 
@@ -80,6 +81,6 @@ message GetSensorStatsResponse {
     double sum = 3;
     double min = 4;
     double max = 5;
-    uint64 updated_unix_ms = 6;
+    int64 updated_unix_ms = 6;
     repeated RecentValue recent = 7;
 }

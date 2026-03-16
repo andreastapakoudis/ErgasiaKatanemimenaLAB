@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15proto/telemetry.proto\x12\x0ctelemetry.v1\"F\n\nSensorMeta\x12\x11\n\tsensor_id\x18\x01 \x01(\t\x12\x13\n\x0bsensor_type\x18\x02 \x01(\t\x12\x10\n\x08location\x18\x03 \x01(\t\"X\n\x0bMeasurement\x12&\n\x04meta\x18\x01 \x01(\x0b\x32\x18.telemetry.v1.SensorMeta\x12\r\n\x05value\x18\x02 \x01(\x01\x12\x12\n\nts_unix_ms\x18\x03 \x01(\x04\"5\n\x0c\x41ggregateKey\x12\x13\n\x0bsensor_type\x18\x01 \x01(\t\x12\x10\n\x08location\x18\x02 \x01(\t\"\x83\x01\n\tAggregate\x12\'\n\x03key\x18\x01 \x01(\x0b\x32\x1a.telemetry.v1.AggregateKey\x12\r\n\x05\x63ount\x18\x02 \x01(\x04\x12\x0b\n\x03sum\x18\x03 \x01(\x01\x12\x0b\n\x03min\x18\x04 \x01(\x01\x12\x0b\n\x03max\x18\x05 \x01(\x01\x12\x17\n\x0fupdated_unix_ms\x18\x06 \x01(\x04\"\x1d\n\tIngestAck\x12\x10\n\x08received\x18\x01 \x01(\x04\"\x82\x01\n\x17StreamAggregatesRequest\x12(\n\x04keys\x18\x01 \x03(\x0b\x32\x1a.telemetry.v1.AggregateKey\x12\x1d\n\x15send_initial_snapshot\x18\x02 \x01(\x08\x12\x1e\n\x16min_update_interval_ms\x18\x03 \x01(\r\"*\n\x15GetSensorStatsRequest\x12\x11\n\tsensor_id\x18\x01 \x01(\t\"0\n\x0bRecentValue\x12\x12\n\nts_unix_ms\x18\x01 \x01(\x04\x12\r\n\x05value\x18\x02 \x01(\x01\"\xba\x01\n\x16GetSensorStatsResponse\x12&\n\x04meta\x18\x01 \x01(\x0b\x32\x18.telemetry.v1.SensorMeta\x12\r\n\x05\x63ount\x18\x02 \x01(\x04\x12\x0b\n\x03sum\x18\x03 \x01(\x01\x12\x0b\n\x03min\x18\x04 \x01(\x01\x12\x0b\n\x03max\x18\x05 \x01(\x01\x12\x17\n\x0fupdated_unix_ms\x18\x06 \x01(\x04\x12)\n\x06recent\x18\x07 \x03(\x0b\x32\x19.telemetry.v1.RecentValue2Y\n\rIngestService\x12H\n\x10PushMeasurements\x12\x19.telemetry.v1.Measurement\x1a\x17.telemetry.v1.IngestAck(\x01\x32h\n\x10\x41ggregateService\x12T\n\x10StreamAggregates\x12%.telemetry.v1.StreamAggregatesRequest\x1a\x17.telemetry.v1.Aggregate0\x01\x32k\n\x0cQueryService\x12[\n\x0eGetSensorStats\x12#.telemetry.v1.GetSensorStatsRequest\x1a$.telemetry.v1.GetSensorStatsResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15proto/telemetry.proto\x12\x0ctelemetry.v1\"F\n\nSensorMeta\x12\x11\n\tsensor_id\x18\x01 \x01(\t\x12\x13\n\x0bsensor_type\x18\x02 \x01(\t\x12\x10\n\x08location\x18\x03 \x01(\t\"e\n\x0bMeasurement\x12&\n\x04meta\x18\x01 \x01(\x0b\x32\x18.telemetry.v1.SensorMeta\x12\x0b\n\x03seq\x18\x02 \x01(\x04\x12\x12\n\nts_unix_ms\x18\x03 \x01(\x03\x12\r\n\x05value\x18\x04 \x01(\x01\"5\n\x0c\x41ggregateKey\x12\x13\n\x0bsensor_type\x18\x01 \x01(\t\x12\x10\n\x08location\x18\x02 \x01(\t\"\x83\x01\n\tAggregate\x12\'\n\x03key\x18\x01 \x01(\x0b\x32\x1a.telemetry.v1.AggregateKey\x12\r\n\x05\x63ount\x18\x02 \x01(\x04\x12\x0b\n\x03sum\x18\x03 \x01(\x01\x12\x0b\n\x03min\x18\x04 \x01(\x01\x12\x0b\n\x03max\x18\x05 \x01(\x01\x12\x17\n\x0fupdated_unix_ms\x18\x06 \x01(\x03\"\x1d\n\tIngestAck\x12\x10\n\x08received\x18\x01 \x01(\x04\"\x82\x01\n\x17StreamAggregatesRequest\x12(\n\x04keys\x18\x01 \x03(\x0b\x32\x1a.telemetry.v1.AggregateKey\x12\x1d\n\x15send_initial_snapshot\x18\x02 \x01(\x08\x12\x1e\n\x16min_update_interval_ms\x18\x03 \x01(\r\"*\n\x15GetSensorStatsRequest\x12\x11\n\tsensor_id\x18\x01 \x01(\t\"0\n\x0bRecentValue\x12\x12\n\nts_unix_ms\x18\x01 \x01(\x03\x12\r\n\x05value\x18\x02 \x01(\x01\"\xba\x01\n\x16GetSensorStatsResponse\x12&\n\x04meta\x18\x01 \x01(\x0b\x32\x18.telemetry.v1.SensorMeta\x12\r\n\x05\x63ount\x18\x02 \x01(\x04\x12\x0b\n\x03sum\x18\x03 \x01(\x01\x12\x0b\n\x03min\x18\x04 \x01(\x01\x12\x0b\n\x03max\x18\x05 \x01(\x01\x12\x17\n\x0fupdated_unix_ms\x18\x06 \x01(\x03\x12)\n\x06recent\x18\x07 \x03(\x0b\x32\x19.telemetry.v1.RecentValue2Y\n\rIngestService\x12H\n\x10PushMeasurements\x12\x19.telemetry.v1.Measurement\x1a\x17.telemetry.v1.IngestAck(\x01\x32h\n\x10\x41ggregateService\x12T\n\x10StreamAggregates\x12%.telemetry.v1.StreamAggregatesRequest\x1a\x17.telemetry.v1.Aggregate0\x01\x32k\n\x0cQueryService\x12[\n\x0eGetSensorStats\x12#.telemetry.v1.GetSensorStatsRequest\x1a$.telemetry.v1.GetSensorStatsResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,25 +34,25 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_SENSORMETA']._serialized_start=39
   _globals['_SENSORMETA']._serialized_end=109
   _globals['_MEASUREMENT']._serialized_start=111
-  _globals['_MEASUREMENT']._serialized_end=199
-  _globals['_AGGREGATEKEY']._serialized_start=201
-  _globals['_AGGREGATEKEY']._serialized_end=254
-  _globals['_AGGREGATE']._serialized_start=257
-  _globals['_AGGREGATE']._serialized_end=388
-  _globals['_INGESTACK']._serialized_start=390
-  _globals['_INGESTACK']._serialized_end=419
-  _globals['_STREAMAGGREGATESREQUEST']._serialized_start=422
-  _globals['_STREAMAGGREGATESREQUEST']._serialized_end=552
-  _globals['_GETSENSORSTATSREQUEST']._serialized_start=554
-  _globals['_GETSENSORSTATSREQUEST']._serialized_end=596
-  _globals['_RECENTVALUE']._serialized_start=598
-  _globals['_RECENTVALUE']._serialized_end=646
-  _globals['_GETSENSORSTATSRESPONSE']._serialized_start=649
-  _globals['_GETSENSORSTATSRESPONSE']._serialized_end=835
-  _globals['_INGESTSERVICE']._serialized_start=837
-  _globals['_INGESTSERVICE']._serialized_end=926
-  _globals['_AGGREGATESERVICE']._serialized_start=928
-  _globals['_AGGREGATESERVICE']._serialized_end=1032
-  _globals['_QUERYSERVICE']._serialized_start=1034
-  _globals['_QUERYSERVICE']._serialized_end=1141
+  _globals['_MEASUREMENT']._serialized_end=212
+  _globals['_AGGREGATEKEY']._serialized_start=214
+  _globals['_AGGREGATEKEY']._serialized_end=267
+  _globals['_AGGREGATE']._serialized_start=270
+  _globals['_AGGREGATE']._serialized_end=401
+  _globals['_INGESTACK']._serialized_start=403
+  _globals['_INGESTACK']._serialized_end=432
+  _globals['_STREAMAGGREGATESREQUEST']._serialized_start=435
+  _globals['_STREAMAGGREGATESREQUEST']._serialized_end=565
+  _globals['_GETSENSORSTATSREQUEST']._serialized_start=567
+  _globals['_GETSENSORSTATSREQUEST']._serialized_end=609
+  _globals['_RECENTVALUE']._serialized_start=611
+  _globals['_RECENTVALUE']._serialized_end=659
+  _globals['_GETSENSORSTATSRESPONSE']._serialized_start=662
+  _globals['_GETSENSORSTATSRESPONSE']._serialized_end=848
+  _globals['_INGESTSERVICE']._serialized_start=850
+  _globals['_INGESTSERVICE']._serialized_end=939
+  _globals['_AGGREGATESERVICE']._serialized_start=941
+  _globals['_AGGREGATESERVICE']._serialized_end=1045
+  _globals['_QUERYSERVICE']._serialized_start=1047
+  _globals['_QUERYSERVICE']._serialized_end=1154
 # @@protoc_insertion_point(module_scope)
