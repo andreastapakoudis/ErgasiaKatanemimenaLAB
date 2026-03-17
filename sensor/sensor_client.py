@@ -1,30 +1,4 @@
-"""
-This file will:
-    Create multiple sensors
-    Each opens its own gRPC stream
-    Stream forever
-"""
-"""
-📘 What This Sensor Client Does (Student Explanation)
-This program simulates a set of industrial sensors that continuously send telemetry data to a central data collection service.
-Each sensor represents a physical measurement device located somewhere in an industrial facility (for example, temperature sensors in a boiler room or vibration sensors on an assembly line). These sensors periodically generate measurements such as temperature, humidity, or vibration intensity.
-
-The MockSensor class produces an asynchronous stream of readings. Each reading contains:
-    A unique sensor identifier (sensor_id)
-    The sensor type (temperature, humidity, etc.)
-    The physical location (warehouse, lab, etc.)
-    A timestamp
-    A simulated measurement value
-
-The program selects a small random subset of sensors (currently 5) and runs them concurrently using Python’s asyncio. Each sensor continuously generates readings at its own sampling rate.
-Normally, these readings would be streamed to a collector service using gRPC client-streaming RPC. 
-However, in this scaffold version, the actual gRPC call has been removed so that the program can run independently while you implement the communication layer.
-
-Your task later in the lab will be to:
-Define the gRPC service in the .proto file.
-Generate Python stubs.
-Replace the placeholder code with the actual gRPC client streaming call.
-"""
+"""Stream a small random subset of mock sensors to collector endpoints."""
 
 import random
 import asyncio
@@ -46,13 +20,11 @@ from sensor.sensor_helper import (
     vibration_boiler_room,
     vibration_warehouse,
     vibration_assembly_line,
-    vibration_lab,
-    GENERATOR_MAP
+    vibration_lab
 )
 
 import os
 
-# COLLECTOR_ADDRS = ["collector:50051","localhost:50052",]
 collector_addrs_str = os.getenv("COLLECTOR_ADDRS", "localhost:50051,localhost:50052")
 
 COLLECTOR_ADDRS = [addr.strip() for addr in collector_addrs_str.split(",") if addr.strip()]
@@ -203,3 +175,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+

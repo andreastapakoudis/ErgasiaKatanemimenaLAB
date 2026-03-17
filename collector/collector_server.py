@@ -1,40 +1,4 @@
-"""
-📘 What the Collector Service Does (Student Explanation)
-
-The collector service is the central component of the telemetry system. Its job is to receive sensor measurements, aggregate them, and provide access to those aggregates to other services.
-In a real industrial telemetry pipeline, the collector typically:
-    Receives continuous sensor measurements via streaming RPC.
-    Stores aggregated statistics in a shared datastore (Redis in this lab).
-    Streams updated aggregate values to monitoring dashboards.
-    Provides an on-demand query interface for inspecting specific sensors.
-
-To support these requirements, the collector exposes three gRPC services:
-1️⃣ IngestService — Client Streaming RPC
-    Sensors connect to this service and continuously stream measurements.
-    Your future implementation will:
-    Accept a stream of Measurement messages.
-    Update Redis aggregates.
-    Maintain recent sensor history.
-    Return an acknowledgment.
-    This demonstrates client-streaming RPC.
-
-2️⃣ AggregateService — Server Streaming RPC
-    Other services (like the FastAPI bridge) subscribe to this service to receive live aggregate updates.
-    Your future implementation will:
-    Periodically read Redis aggregates.
-    Stream updates when values change.
-    Continue until the client disconnects.
-    This demonstrates server-streaming RPC.
-
-3️⃣ QueryService — Unary RPC
-    This service allows clients to request statistics for a specific sensor.
-    Your future implementation will:
-    Retrieve per-sensor statistics from Redis.
-    Return recent values and aggregate metrics.
-    This demonstrates a standard unary RPC.
-
-For now, these services are provided as placeholders so the collector process can run while you focus on defining the protobuf services and implementing the RPC logic.
-"""
+"""Collector gRPC server backed by Redis aggregates and per-sensor stats."""
 import asyncio
 import time
 from collections import defaultdict
@@ -49,7 +13,6 @@ import argparse
 import json
 import os
 
-# redis_client = redis.Redis(host="redis", port=6379, decode_responses=True)
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 
@@ -199,8 +162,15 @@ class AggregateService(telemetry_pb2_grpc.AggregateServiceServicer):
             }
 
         previous_snapshot = {}
+        send_initial_snapshot = request.send_initial_snapshot
+        min_interval_s = max(request.min_update_interval_ms, 0) / 1000.0
+        last_sent_at = {}
 
         while True:
+            if context.cancelled():
+                print("[Collector] AggregateService stream cancelled")
+                return
+
             snapshot = await store.snapshot()
 
             for redis_key, data in snapshot.items():
@@ -214,15 +184,28 @@ class AggregateService(telemetry_pb2_grpc.AggregateServiceServicer):
                     "max": float(data.get("max", 0.0)),
                 }
 
-                if previous_snapshot.get(redis_key) == normalized:
+                if redis_key not in previous_snapshot:
+                    previous_snapshot[redis_key] = normalized
+                    if not send_initial_snapshot:
+                        continue
+
+                changed = previous_snapshot.get(redis_key) != normalized
+                if not changed and not send_initial_snapshot:
                     continue
 
-                previous_snapshot[redis_key] = normalized
+                now = time.time()
+                if min_interval_s > 0:
+                    last_sent = last_sent_at.get(redis_key, 0.0)
+                    if changed and (now - last_sent) < min_interval_s:
+                        continue
 
                 try:
                     _, sensor_type, location = redis_key.split(":", 2)
                 except ValueError:
                     continue
+
+                previous_snapshot[redis_key] = normalized
+                last_sent_at[redis_key] = now
 
                 yield telemetry_pb2.Aggregate(
                     key=telemetry_pb2.AggregateKey(
@@ -236,6 +219,7 @@ class AggregateService(telemetry_pb2_grpc.AggregateServiceServicer):
                     updated_unix_ms=int(time.time() * 1000),
                 )
 
+            send_initial_snapshot = False
             await asyncio.sleep(1)
                     
 # ----------------------------------------------------------
@@ -346,3 +330,5 @@ if __name__ == "__main__":
     args = ap.parse_args()
     preferred_port = args.port
     asyncio.run(serve(preferred_port))
+
+

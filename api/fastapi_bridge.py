@@ -1,78 +1,4 @@
-"""
-Responsibilities:
-
-1. Subscribe to collector aggregate stream via gRPC.
-2. Broadcast aggregate updates to WebSocket clients.
-
-Currently:
-- Uses placeholder data.
-- Does NOT connect to collector yet.
-
-Students will implement:
-- gRPC streaming client.
-- Real broadcast logic.
-
-📘 What the FastAPI Bridge Does (Student Explanation)
-
-The FastAPI bridge connects the telemetry backend with user-facing applications such as dashboards or monitoring tools.
-
-It acts as a gateway between:
-
-The collector service (gRPC backend)
-
-The web clients (HTTP/WebSocket frontend)
-
-This separation is common in real-world telemetry and observability systems because:
-
-gRPC is efficient for internal microservice communication.
-
-Browsers do not natively support standard gRPC streaming.
-
-FastAPI provides a convenient HTTP/WebSocket interface.
-
-Responsibilities of the FastAPI Bridge
-1️⃣ Subscribe to Collector Aggregates (gRPC)
-
-The bridge must connect to the collector and call:
-
-AggregateService.StreamAggregates(...)
-
-This is a server-streaming RPC:
-
-The collector continuously sends updated aggregate data.
-
-The FastAPI bridge consumes this stream asynchronously.
-
-This demonstrates how backend services subscribe to live data streams.
-
-2️⃣ Broadcast Data to Web Clients (WebSockets)
-
-Connected WebSocket clients should receive:
-
-Real-time aggregate updates.
-
-No polling required.
-
-Immediate propagation of new telemetry data.
-
-This simulates a live monitoring dashboard.
-
-3️⃣ Provide HTTP API (Optional Extension)
-
-Later, you may implement unary RPC calls:
-
-QueryService.GetSensorStats(...)
-
-This supports:
-
-Sensor drill-down queries
-
-Historical inspection
-
-Dashboard initialization
-
-For now, focus on streaming.
-"""
+"""FastAPI bridge for WebSocket broadcasts and sensor query endpoints."""
 import asyncio
 import grpc
 import json
@@ -229,3 +155,5 @@ async def get_sensor(sensor_id: str):
         raise HTTPException(status_code=404, detail="Sensor not found")
 
     return data
+
+
